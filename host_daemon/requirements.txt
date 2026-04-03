@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+pynput
+pydantic
+websockets
