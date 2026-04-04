@@ -6,6 +6,8 @@
 
 MacPad turns your iPhone into a virtual, ultra-low-latency game controller for your Mac using a React frontend served via Docker and a lightweight native Python bridge.
 
+![MacPad Controller](resources/controller.png)
+
 ## Setup Instructions
 
 1. Ensure [Docker Desktop](https://www.docker.com/products/docker-desktop/) or OrbStack is installed and running on your Mac.
