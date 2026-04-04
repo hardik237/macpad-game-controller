@@ -49,11 +49,13 @@ macOS Host
 - Use `navigator.vibrate` and Web Audio API for haptic/audio feedback.
 
 ### Backend (Python)
-- **API actions**: lowercase strings (`"press"`, `"release"`, `"configure"`, `"ping"`).
+- **API actions**: lowercase strings (`"press"`, `"release"`, `"configure"`, `"ping"`, `"auth"`).
 - Use a two-tier key mapping system: `KEY_MAPS` for defaults, `USER_MAPPINGS` for runtime overrides per player.
 - Wrap blocking `pynput` calls in `run_in_threadpool` to avoid blocking the async event loop.
-- WebSocket message format: `{"action": "<action>", "key": "<key>", "player": <int>}`.
+- WebSocket message format: `{"action": "<action>", "key": "<key>"}` (player is determined by auth, not sent by client).
+- **Player authentication**: random 4-digit codes generated per server session. Codes persist across uvicorn reloads via environment variables. Clients must send `{"action": "auth", "code": "<4-digit>"}` before any other action.
 - CORS is open (`allow_origins=["*"]`) — this is intentional because the app runs on a private LAN.
+- Event-level logs (press/release) are `debug`; connection and auth logs are `info`.
 
 ### CSS / UI Design
 - Glass-morphism style using `backdrop-filter: blur()`, rgba surfaces, and gradient text.
@@ -117,6 +119,7 @@ python3 server.py   # uvicorn with reload=True
 - **Native Python daemon (not Dockerized)**: requires direct macOS Accessibility API access.
 - **Docker for frontend only**: isolated, reproducible Nginx serving.
 - **No state management library**: app is simple enough for React `useState` + localStorage.
+- **Player code authentication**: random 4-digit codes per session lock each phone to P1 or P2, preventing players from switching controls. Codes are cached in `localStorage` for auto-reconnect; cleared on logout.
 - **Multi-player support**: separate key mappings for Player 1 (arrow keys) and Player 2 (WASD).
 - **Drag-and-drop layout editor**: accommodates different iPhone screen sizes and orientations.
 - **Cross-platform compatibility**: touch + mouse event handling for iOS/Android and desktop browsers.

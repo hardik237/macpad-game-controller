@@ -18,8 +18,11 @@ MacPad turns your iPhone into a virtual, ultra-low-latency game controller for y
    ./start.sh
    ```
 
-4. The script will output an IP address (e.g., `http://192.168.1.5:8080`). Open this exact URL in your iPhone's Safari browser.
-5. Depending on your macOS version, the first time you run this, macOS may block the Python process from simulating keystrokes.
+4. The script will print two **4-digit player codes** (one for P1, one for P2) and an IP address (e.g., `http://192.168.1.5:8080`).
+5. Open the URL on your iPhone's Safari browser and enter the player code shown on the Mac terminal.
+6. Each code locks the phone to its player controls — P1 or P2 — so players can't interfere with each other.
+7. The code is cached in the browser. On refresh it auto-reconnects. Tap **⏻ Exit** to log out and enter a different code.
+8. Depending on your macOS version, the first time you run this, macOS may block the Python process from simulating keystrokes.
     - Go to **System Settings > Privacy & Security > Accessibility**
     - Ensure your Terminal (or IDE) is toggled ON to allow simulating keystrokes.
 
