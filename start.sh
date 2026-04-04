@@ -5,6 +5,13 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 
+# Cleanup function to stop Docker container when script exits
+cleanup() {
+    echo "🛑 Stopping UI container..."
+    docker-compose down
+}
+trap cleanup EXIT
+
 echo "📱 Starting Gamepad Bridge Local Environment..."
 
 # 1. Start Docker Container for the UI

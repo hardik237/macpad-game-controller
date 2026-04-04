@@ -1,4 +1,8 @@
-# MacPad: Web-to-HID Gamepad Bridge
+# MacPad: Gamepad Bridge 🎮
+
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Python Backend](https://img.shields.io/badge/Python-3.x-blue.svg)
+![Vite Frontend](https://img.shields.io/badge/Frontend-React%20%7C%20Vite-646CFF.svg)
 
 MacPad turns your iPhone into a virtual, ultra-low-latency game controller for your Mac using a React frontend served via Docker and a lightweight native Python bridge.
 
@@ -34,3 +38,9 @@ Once you load your saved game in Afterplay in your Mac's browser, you must map t
     - **Select:** `Shift`
 
 That's it! Tap the buttons on your iPhone and enjoy gaming.
+
+## Contributing
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to get started, make changes, and open a Pull Request.
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
