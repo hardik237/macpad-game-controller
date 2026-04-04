@@ -1,4 +1,5 @@
 import os
+import random
 import uvicorn
 import json
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -54,6 +55,21 @@ KEY_MAPS = {
 
 USER_MAPPINGS = {}
 
+# Generate random 4-digit player codes on startup
+# Use environment variables to persist codes across uvicorn reloads
+if "MACPAD_P1_CODE" in os.environ:
+    PLAYER_CODES = {
+        1: os.environ["MACPAD_P1_CODE"],
+        2: os.environ["MACPAD_P2_CODE"],
+    }
+else:
+    PLAYER_CODES = {
+        1: str(random.randint(1000, 9999)),
+        2: str(random.randint(1000, 9999)),
+    }
+    os.environ["MACPAD_P1_CODE"] = PLAYER_CODES[1]
+    os.environ["MACPAD_P2_CODE"] = PLAYER_CODES[2]
+
 def parse_key_string(val: str):
     val = val.lower().strip()
     if hasattr(Key, val):
@@ -79,21 +95,43 @@ def get_pynput_key(key_str: str, player: int):
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     logger.info("New WebSocket connection established")
+    authenticated_player = None
     try:
         while True:
             data = await websocket.receive_text()
             try:
                 msg = json.loads(data)
                 action = msg.get("action")
-                player = msg.get("player", 1)
                 
                 if action == "ping":
                     continue
+
+                if action == "auth":
+                    code = msg.get("code", "")
+                    for p, c in PLAYER_CODES.items():
+                        if code == c:
+                            authenticated_player = p
+                            break
+                    if authenticated_player:
+                        await websocket.send_text(json.dumps({"type": "auth", "success": True, "player": authenticated_player}))
+                        logger.info(f"P{authenticated_player} authenticated")
+                    else:
+                        await websocket.send_text(json.dumps({"type": "auth", "success": False}))
+                        logger.warning(f"Failed auth attempt with code: {code}")
+                    continue
+
+                # All other actions require authentication
+                if authenticated_player is None:
+                    await websocket.send_text(json.dumps({"type": "error", "message": "Not authenticated"}))
+                    continue
+
+                player = authenticated_player
                     
                 if action == "configure":
                     mapping = msg.get("mapping", {})
                     USER_MAPPINGS[player] = mapping
-                    logger.info(f"P{player} Configuration Updated: {mapping}")
+                    logger.info(f"P{player} configuration updated")
+                    logger.debug(f"P{player} mapping: {mapping}")
                     continue
                     
                 key_str = msg.get("key")
@@ -104,18 +142,23 @@ async def websocket_endpoint(websocket: WebSocket):
                 
                 if action == "press":
                     await run_in_threadpool(keyboard.press, k)
-                    logger.info(f"P{player} Pressed: {key_str} -> {k}")
+                    logger.debug(f"P{player} Pressed: {key_str} -> {k}")
                 elif action == "release":
                     await run_in_threadpool(keyboard.release, k)
-                    logger.info(f"P{player} Released: {key_str} -> {k}")
+                    logger.debug(f"P{player} Released: {key_str} -> {k}")
                     
             except HTTPException as httpe:
                 logger.warning(f"Validation error: {httpe.detail}")
             except Exception as e:
                 logger.error(f"Error handling message: {e}")
     except WebSocketDisconnect:
-        logger.info("WebSocket disconnected")
+        logger.info(f"WebSocket disconnected (P{authenticated_player or '?'})")
 
 if __name__ == "__main__":
+    print("\n" + "=" * 40)
+    print(f"  🎮 Player 1 Code:  \033[1;97;46m {PLAYER_CODES[1]} \033[0m")
+    print(f"  🎮 Player 2 Code:  \033[1;97;45m {PLAYER_CODES[2]} \033[0m")
+    print("=" * 40 + "\n")
+    logger.info("Share these codes with players to connect.")
     # Run server on port 8000
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

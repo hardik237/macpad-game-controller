@@ -46,6 +46,70 @@ html, body {
   background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
 }
 
+/* Auth screen */
+.auth-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+}
+
+.auth-screen h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, var(--highlight), #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+}
+
+.auth-screen p {
+  color: rgba(241, 245, 249, 0.7);
+  margin: 0;
+  font-size: 1rem;
+}
+
+.auth-input {
+  width: 180px;
+  padding: 14px;
+  font-size: 2rem;
+  text-align: center;
+  letter-spacing: 12px;
+  font-family: 'Outfit', sans-serif;
+  border: 2px solid rgba(56, 189, 248, 0.3);
+  border-radius: 12px;
+  background: var(--surface-color);
+  color: var(--text-color);
+  outline: none;
+  backdrop-filter: blur(10px);
+  touch-action: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.auth-input:focus {
+  border-color: var(--highlight);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+}
+
+.auth-error {
+  color: #f87171;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.auth-btn {
+  padding: 12px 40px;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.auth-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .header {
   position: absolute;
   top: 0;
@@ -59,6 +123,7 @@ html, body {
 .header .fullscreen-btn,
 .header .player-toggle label {
   pointer-events: auto; /* Re-enable ONLY for actual buttons, prevent 100% width block overlaps */
+  touch-action: auto;
 }
 
 .header h1 {
@@ -96,6 +161,11 @@ html, body {
 .fullscreen-btn:active {
   background: var(--btn-active);
   transform: translateY(2px);
+}
+
+.logout-btn {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
 .header-actions {

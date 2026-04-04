@@ -37,7 +37,11 @@ const playClickSound = () => {
 };
 
 function App() {
-  const [player, setPlayer] = React.useState(1);
+  const [player, setPlayer] = React.useState(null);
+  const [authCode, setAuthCode] = React.useState(() => {
+    return localStorage.getItem('macpad_auth_code') || '';
+  });
+  const [authError, setAuthError] = React.useState(false);
   const [customKeys, setCustomKeys] = React.useState(() => {
     const saved = localStorage.getItem('macpad_keys');
     return saved ? JSON.parse(saved) : {};
@@ -53,7 +57,7 @@ function App() {
   const ws = React.useRef(null);
 
   useEffect(() => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+    if (player && ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ action: "configure", player, mapping: customKeys }));
     }
   }, [customKeys, player]);
@@ -66,7 +70,27 @@ function App() {
       
       socket.onopen = () => {
         console.log("WebSocket Connected");
-        socket.send(JSON.stringify({ action: "configure", player, mapping: customKeys }));
+        const savedCode = localStorage.getItem('macpad_auth_code');
+        if (savedCode) {
+          socket.send(JSON.stringify({ action: "auth", code: savedCode }));
+        }
+      };
+      socket.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'auth') {
+            if (msg.success) {
+              setPlayer(msg.player);
+              setAuthError(false);
+              localStorage.setItem('macpad_auth_code', localStorage.getItem('macpad_auth_code') || '');
+              socket.send(JSON.stringify({ action: "configure", player: msg.player, mapping: customKeys }));
+            } else {
+              localStorage.removeItem('macpad_auth_code');
+              setPlayer(null);
+              setAuthError(true);
+            }
+          }
+        } catch (e) {}
       };
       socket.onclose = () => {
         console.log("WebSocket Disconnected, reconnecting...");
@@ -97,8 +121,8 @@ function App() {
     if (!isIOS) return;
     
     const preventNative = (e) => {
-      // Allow input interactions inside settings modal and header UI elements
-      if (e.target.closest('.settings-modal, .header-actions, .player-toggle')) return;
+      // Allow input interactions inside settings modal, header UI, and auth screen
+      if (e.target.closest('.settings-modal, .header-actions, .player-toggle, .auth-screen')) return;
       if (e.cancelable) e.preventDefault();
     };
     
@@ -122,6 +146,21 @@ function App() {
     }, 2000);
     return () => clearInterval(pingInterval);
   }, []);
+
+  const handleAuth = () => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      setAuthError(false);
+      localStorage.setItem('macpad_auth_code', authCode);
+      ws.current.send(JSON.stringify({ action: "auth", code: authCode }));
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('macpad_auth_code');
+    setPlayer(null);
+    setAuthCode('');
+    setAuthError(false);
+  };
 
   const toggleFullScreen = () => {
     const doc = window.document;
@@ -174,8 +213,9 @@ function App() {
     }));
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (e) => {
     if (!editLayoutMode || !draggingGroup.current) return;
+    if (e && e.target && e.target.closest('.header-actions')) return;
     draggingGroup.current = null;
     localStorage.setItem('macpad_layout_offsets', JSON.stringify(layout));
   };
@@ -243,6 +283,36 @@ function App() {
     </div>
   );
 
+  if (!player) {
+    return (
+      <div className="gamepad">
+        <div className="auth-screen">
+          <h1>MacPad</h1>
+          <p>Enter your 4-digit player code</p>
+          <input
+            className="auth-input"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength="4"
+            placeholder="0000"
+            value={authCode}
+            onChange={(e) => {
+              setAuthCode(e.target.value.replace(/\D/g, ''));
+              setAuthError(false);
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAuth(); }}
+            autoFocus
+          />
+          {authError && <p className="auth-error">Invalid code. Try again.</p>}
+          <button className="pill-btn auth-btn" onClick={handleAuth} disabled={authCode.length !== 4}>
+            Connect
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="gamepad" onTouchMove={handleDragMove} onTouchEnd={handleDragEnd} onTouchCancel={handleDragEnd}>
       {showSettings && (
@@ -274,7 +344,7 @@ function App() {
 
       <div className="header">
         <h1>MacPad</h1>
-        <p>Connected to: {window.location.hostname}</p>
+        <p>Connected as Player {player}</p>
         <div className="header-actions">
           <button className="fullscreen-btn" onClick={toggleFullScreen}>
             ⛶ Fullscreen
@@ -285,14 +355,9 @@ function App() {
           <button className={`fullscreen-btn ${editLayoutMode ? 'active' : ''}`} onClick={() => setEditLayoutMode(!editLayoutMode)}>
             {editLayoutMode ? "✅ Done Layout" : "🖌 Edit Layout"}
           </button>
-        </div>
-        <div className="player-toggle">
-          <label className={player === 1 ? 'active' : ''}>
-            <input type="radio" value={1} checked={player === 1} onChange={() => setPlayer(1)} /> P1
-          </label>
-          <label className={player === 2 ? 'active' : ''}>
-            <input type="radio" value={2} checked={player === 2} onChange={() => setPlayer(2)} /> P2
-          </label>
+          <button className="fullscreen-btn logout-btn" onClick={handleLogout}>
+            ⏻ Exit
+          </button>
         </div>
       </div>
 
