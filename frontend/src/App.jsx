@@ -59,7 +59,6 @@ function App() {
   const dragStartOffset = React.useRef({x: 0, y: 0});
   const ws = React.useRef(null);
   const pendingAuthCode = React.useRef(null);
-  const lastAuthTouchTime = React.useRef(0);
 
   const sendAuth = useCallback((code) => {
     const safeCode = (code || '').trim();
@@ -172,17 +171,6 @@ function App() {
     setAuthError(false);
     localStorage.setItem('macpad_auth_code', cleanCode);
     sendAuth(cleanCode);
-  };
-
-  const handleAuthTouchEnd = (e) => {
-    if (e.cancelable) e.preventDefault();
-    lastAuthTouchTime.current = Date.now();
-    handleAuth();
-  };
-
-  const handleAuthClick = () => {
-    if (Date.now() - lastAuthTouchTime.current < 500) return;
-    handleAuth();
   };
 
   const handleLogout = () => {
@@ -337,8 +325,7 @@ function App() {
           {authError && <p className="auth-error">Invalid code. Try again.</p>}
           <button
             className="pill-btn auth-btn"
-            onClick={handleAuthClick}
-            onTouchEnd={handleAuthTouchEnd}
+            onClick={handleAuth}
             disabled={authCode.length !== 4}
           >
             Connect
