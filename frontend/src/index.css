@@ -103,6 +103,7 @@ html, body {
   padding: 12px 40px;
   font-size: 1.1rem;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .auth-btn:disabled {

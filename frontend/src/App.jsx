@@ -58,6 +58,22 @@ function App() {
   const draggingGroup = React.useRef(null);
   const dragStartOffset = React.useRef({x: 0, y: 0});
   const ws = React.useRef(null);
+  const pendingAuthCode = React.useRef(null);
+  const lastAuthTouchTime = React.useRef(0);
+
+  const sendAuth = useCallback((code) => {
+    const safeCode = (code || '').trim();
+    if (safeCode.length !== 4) return;
+
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ action: "auth", code: safeCode }));
+      pendingAuthCode.current = null;
+      return;
+    }
+
+    // Safari can dispatch tap before WS finishes opening; queue and send on open.
+    pendingAuthCode.current = safeCode;
+  }, []);
 
   useEffect(() => {
     if (player && ws.current && ws.current.readyState === WebSocket.OPEN) {
@@ -73,9 +89,9 @@ function App() {
       
       socket.onopen = () => {
         console.log("WebSocket Connected");
-        const savedCode = localStorage.getItem('macpad_auth_code');
-        if (savedCode) {
-          socket.send(JSON.stringify({ action: "auth", code: savedCode }));
+        const codeToSend = pendingAuthCode.current || localStorage.getItem('macpad_auth_code');
+        if (codeToSend) {
+          sendAuth(codeToSend);
         }
       };
       socket.onmessage = (event) => {
@@ -113,7 +129,7 @@ function App() {
         ws.current.close();
       }
     };
-  }, []);
+  }, [sendAuth]);
 
   // Aggressively prevent iOS Safari from hijacking touches for "rubber banding",
   // "pull to refresh", or "double tap to zoom" gestures which cause controls to hang.
@@ -151,11 +167,22 @@ function App() {
   }, []);
 
   const handleAuth = () => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      setAuthError(false);
-      localStorage.setItem('macpad_auth_code', authCode);
-      ws.current.send(JSON.stringify({ action: "auth", code: authCode }));
-    }
+    const cleanCode = authCode.trim();
+    if (cleanCode.length !== 4) return;
+    setAuthError(false);
+    localStorage.setItem('macpad_auth_code', cleanCode);
+    sendAuth(cleanCode);
+  };
+
+  const handleAuthTouchEnd = (e) => {
+    if (e.cancelable) e.preventDefault();
+    lastAuthTouchTime.current = Date.now();
+    handleAuth();
+  };
+
+  const handleAuthClick = () => {
+    if (Date.now() - lastAuthTouchTime.current < 500) return;
+    handleAuth();
   };
 
   const handleLogout = () => {
@@ -308,7 +335,12 @@ function App() {
             autoFocus
           />
           {authError && <p className="auth-error">Invalid code. Try again.</p>}
-          <button className="pill-btn auth-btn" onClick={handleAuth} disabled={authCode.length !== 4}>
+          <button
+            className="pill-btn auth-btn"
+            onClick={handleAuthClick}
+            onTouchEnd={handleAuthTouchEnd}
+            disabled={authCode.length !== 4}
+          >
             Connect
           </button>
         </div>
