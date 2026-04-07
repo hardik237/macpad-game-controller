@@ -1,0 +1,50 @@
+{
+  "1": {
+    "controller1": {
+      "up": "up",
+      "down": "down",
+      "left": "left",
+      "right": "right",
+      "a": "z",
+      "b": "x",
+      "select": "shift",
+      "start": "enter"
+    },
+    "controller2": {
+      "up": "up",
+      "down": "down",
+      "left": "left",
+      "right": "right",
+      "a": "z",
+      "b": "x",
+      "x": "a",
+      "y": "s",
+      "select": "shift",
+      "start": "enter"
+    }
+  },
+  "2": {
+    "controller1": {
+      "up": "w",
+      "down": "s",
+      "left": "a",
+      "right": "d",
+      "a": "j",
+      "b": "k",
+      "select": "y",
+      "start": "i"
+    },
+    "controller2": {
+      "up": "w",
+      "down": "s",
+      "left": "a",
+      "right": "d",
+      "a": "j",
+      "b": "k",
+      "x": "m",
+      "y": ",",
+      "select": "y",
+      "start": "i"
+    }
+  }
+}

@@ -1,5 +1,4 @@
 import os
-import random
 import uvicorn
 import json
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -9,7 +8,7 @@ from pydantic import BaseModel
 from pynput.keyboard import Key, Controller
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Mac HID Gamepad Bridge")
@@ -24,59 +23,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ref: Afterplay.io keyboard mapping defaults
-# D-Pad -> Arrow Keys
-# A -> z
-# B -> x
-# Select -> shift
-# Start -> enter
-KEY_MAPS = {
-    1: {
-        "up": Key.up,
-        "down": Key.down,
-        "left": Key.left,
-        "right": Key.right,
-        "a": "z",
-        "b": "x",
-        "select": Key.shift,
-        "start": Key.enter
-    },
-    2: {
-        "up": "w",
-        "down": "s",
-        "left": "a",
-        "right": "d",
-        "a": "j",
-        "b": "k",
-        "select": "u",
-        "start": "i"
-    }
-}
-
-USER_MAPPINGS = {}
-
-# Generate random 4-digit player codes on startup
-# Use environment variables to persist codes across uvicorn reloads
-if "MACPAD_P1_CODE" in os.environ:
-    PLAYER_CODES = {
-        1: os.environ["MACPAD_P1_CODE"],
-        2: os.environ["MACPAD_P2_CODE"],
-    }
-else:
-    PLAYER_CODES = {
-        1: str(random.randint(1000, 9999)),
-        2: str(random.randint(1000, 9999)),
-    }
-    os.environ["MACPAD_P1_CODE"] = PLAYER_CODES[1]
-    os.environ["MACPAD_P2_CODE"] = PLAYER_CODES[2]
-
 def parse_key_string(val: str):
     val = val.lower().strip()
     if hasattr(Key, val):
         return getattr(Key, val)
     return val
 
-def get_pynput_key(key_str: str, player: int):
+# Load key mappings from mappings.json
+MAPPINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mappings.json")
+
+def load_key_maps():
+    with open(MAPPINGS_FILE, "r") as f:
+        raw = json.load(f)
+    maps = {}
+    for player_str, controllers in raw.items():
+        player = int(player_str)
+        maps[player] = {}
+        for ctrl_name, mapping in controllers.items():
+            maps[player][ctrl_name] = {k: parse_key_string(v) for k, v in mapping.items()}
+    return maps
+
+KEY_MAPS = load_key_maps()
+
+USER_MAPPINGS = {}
+
+# Fixed player codes
+PLAYER_CODES = {
+    1: "0001",
+    2: "0002",
+}
+
+def get_pynput_key(key_str: str, player: int, controller: str = "controller1"):
     k = key_str.lower()
     mapped_val = None
     
@@ -85,9 +62,11 @@ def get_pynput_key(key_str: str, player: int):
         
     if mapped_val is not None:
         return parse_key_string(mapped_val)
-        
-    if player in KEY_MAPS and k in KEY_MAPS[player]:
-        return KEY_MAPS[player][k]
+
+    if player in KEY_MAPS:
+        ctrl_map = KEY_MAPS[player].get(controller, {})
+        if k in ctrl_map:
+            return ctrl_map[k]
         
     raise HTTPException(status_code=400, detail="Invalid key")
 
@@ -138,7 +117,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 if not key_str or not action:
                     continue
                 
-                k = get_pynput_key(key_str, player)
+                controller = msg.get("controller", "controller1")
+                k = get_pynput_key(key_str, player, controller)
                 
                 if action == "press":
                     await run_in_threadpool(keyboard.press, k)

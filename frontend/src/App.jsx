@@ -48,6 +48,9 @@ function App() {
   });
   const [showSettings, setShowSettings] = React.useState(false);
   const [editLayoutMode, setEditLayoutMode] = React.useState(false);
+  const [controllerType, setControllerType] = React.useState(() => {
+    return localStorage.getItem('macpad_controller_type') || '1';
+  });
   const [layout, setLayout] = React.useState(() => {
     const saved = localStorage.getItem('macpad_layout_offsets');
     return saved ? JSON.parse(saved) : {};
@@ -122,7 +125,7 @@ function App() {
     
     const preventNative = (e) => {
       // Allow input interactions inside settings modal, header UI, and auth screen
-      if (e.target.closest('.settings-modal, .header-actions, .player-toggle, .auth-screen')) return;
+      if (e.target.closest('.settings-modal, .header-actions, .player-toggle, .auth-screen, .controller-select')) return;
       if (e.cancelable) e.preventDefault();
     };
     
@@ -222,9 +225,9 @@ function App() {
 
   const sendCommand = useCallback((action, key) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ action, key, player }));
+      ws.current.send(JSON.stringify({ action, key, player, controller: `controller${controllerType}` }));
     }
-  }, [player]);
+  }, [player, controllerType]);
 
   const lastTouchTime = React.useRef(0);
 
@@ -321,7 +324,10 @@ function App() {
             <h2>P{player} Custom Keys</h2>
             <p>Type a key like 'space', 'enter', or 'z'. Leave blank to use defaults.</p>
             <div className="settings-grid">
-              {['up', 'down', 'left', 'right', 'a', 'b', 'select', 'start'].map(k => (
+              {(controllerType === '2'
+                ? ['up', 'down', 'left', 'right', 'a', 'b', 'x', 'y', 'select', 'start']
+                : ['up', 'down', 'left', 'right', 'a', 'b', 'select', 'start']
+              ).map(k => (
                 <div key={k} className="settings-row">
                   <label>{k.toUpperCase()}</label>
                   <input 
@@ -358,6 +364,17 @@ function App() {
           <button className="fullscreen-btn logout-btn" onClick={handleLogout}>
             ⏻ Exit
           </button>
+          <select
+            className="controller-select"
+            value={controllerType}
+            onChange={(e) => {
+              setControllerType(e.target.value);
+              localStorage.setItem('macpad_controller_type', e.target.value);
+            }}
+          >
+            <option value="1">Controller 1</option>
+            <option value="2">Controller 2</option>
+          </select>
         </div>
       </div>
 
@@ -404,11 +421,20 @@ function App() {
           onTouchStart={handleDragStart('actions')}
           style={{ transform: `translate(${(layout.actions || {}).x || 0}px, ${(layout.actions || {}).y || 0}px)` }}
         >
-          <div className="action-buttons">
-            <Button name="b" cls="btn-b" />
-            <Button name="c" cls="btn-c" />
-            <Button name="a" cls="btn-a" />
-          </div>
+          {controllerType === '2' ? (
+            <div className="action-buttons abxy-buttons">
+              <Button name="x" cls="btn-x" />
+              <Button name="a" cls="btn-a" />
+              <Button name="y" cls="btn-y" />
+              <Button name="b" cls="btn-b" />
+            </div>
+          ) : (
+            <div className="action-buttons">
+              <Button name="b" cls="btn-b" />
+              <Button name="c" cls="btn-c" />
+              <Button name="a" cls="btn-a" />
+            </div>
+          )}
         </div>
       </div>
     </div>
